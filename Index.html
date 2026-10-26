@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trình Sửa Cấu Trúc File Word Bằng Gemini AI</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Mammoth.js for docx to HTML conversion -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- html-docx-js for exporting HTML back to docx -->
+  <script src="https://cdn.jsdelivr.net/npm/html-docx-js-typescript@1.5.5/dist/html-docx.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.8);
+    }
+    .preview-doc {
+      font-family: 'Times New Roman', Times, serif;
+      line-height: 1.6;
+    }
+    .preview-doc h1 { font-size: 1.875rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .preview-doc h2 { font-size: 1.5rem; font-weight: bold; margin-top: 0.875rem; margin-bottom: 0.5rem; }
+    .preview-doc h3 { font-size: 1.25rem; font-weight: bold; margin-top: 0.75rem; margin-bottom: 0.5rem; }
+    .preview-doc p { margin-bottom: 0.75rem; text-align: justify; }
+    .preview-doc ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+    .preview-doc ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+    .preview-doc table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .preview-doc th, .preview-doc td { border: 1px solid #cbd5e1; padding: 0.5rem 0.75rem; }
+    .preview-doc th { background-color: #f1f5f9; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-file-word"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-slate-900 text-lg leading-tight">Word Structure AI Editor</h1>
+          <p class="text-xs text-slate-500">Tối ưu & Chuẩn hóa cấu trúc tài liệu bằng Gemini AI</p>
+        </div>
+      </div>
+
+      <!-- Header actions & Key settings -->
+      <div class="flex items-center gap-3">
+        <button id="btnOpenApiKeyModal" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition">
+          <i class="fa-solid fa-key text-amber-500"></i>
+          <span id="apiKeyStatusText">Cấu hình API Key</span>
+        </button>
+        <button id="btnExportDocx" disabled class="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm">
+          <i class="fa-solid fa-download"></i>
+          <span>Tải xuống .DOCX</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
+
+    <!-- Control Panel / Sidebar (Left) -->
+    <div class="lg:w-1/3 flex flex-col gap-6">
+      
+      <!-- Upload Box -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-blue-600"></i> 1. Tải Lên File Word (.docx)
+        </h2>
+        
+        <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-blue-50/30 flex flex-col items-center justify-center gap-2">
+          <input type="file" id="fileInput" accept=".docx" class="hidden">
+          <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl mb-1">
+            <i class="fa-solid fa-file-arrow-up"></i>
+          </div>
+          <p class="text-sm font-medium text-slate-700">Kéo thả file .docx vào đây hoặc <span class="text-blue-600 underline">chọn file</span></p>
+          <p class="text-xs text-slate-400">Hỗ trợ các file Microsoft Word định dạng .docx</p>
+        </div>
+
+        <div id="fileInfo" class="hidden mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center justify-between">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <i class="fa-solid fa-file-word text-blue-600 text-lg flex-shrink-0"></i>
+            <span id="fileName" class="text-xs font-medium text-slate-800 truncate">document.docx</span>
+          </div>
+          <button id="btnRemoveFile" class="text-slate-400 hover:text-red-500 text-sm">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Prompt Input & Execution -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> 2. Yêu Cầu Thay Đổi Cấu Trúc
+        </h2>
+
+        <!-- Sample Prompts -->
+        <div class="mb-3">
+          <label class="block text-xs font-semibold text-slate-500 mb-1.5">Gợi ý yêu cầu nhanh:</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button class="sample-prompt text-xs bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-600 px-2.5 py-1 rounded-md transition border border-slate-200">
+              Viết hoa & in đậm tất cả tiêu đề
+            </button>
+            <button class="sample-prompt text-xs bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-600 px-2.5 py-1 rounded-md transition border border-slate-200">
+              Thêm mục lục ở đầu văn bản
+            </button>
+            <button class="sample-prompt text-xs bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-600 px-2.5 py-1 rounded-md transition border border-slate-200">
+              Chuẩn hóa bảng biểu và khoảng cách
+            </button>
+            <button class="sample-prompt text-xs bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-600 px-2.5 py-1 rounded-md transition border border-slate-200">
+              Chuyển danh sách thành định dạng số thứ tự
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom Prompt Textarea -->
+        <div class="flex-1 flex flex-col mb-4">
+          <textarea id="promptInput" rows="5" placeholder="Nhập yêu cầu thay đổi cấu trúc/trình bày (VD: Chuyển các phần chính thành bảng, định dạng tiêu đề màu xanh navy, căn chỉnh đoạn văn...)" class="w-full p-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none text-slate-700 placeholder-slate-400"></textarea>
+          <span class="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1">
+            <i class="fa-solid fa-shield-halved"></i> Gemini AI sẽ giữ nguyên 100% nội dung chữ, chỉ tái cấu trúc & định dạng.
+          </span>
+        </div>
+
+        <!-- Process Button -->
+        <button id="btnProcess" disabled class="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm rounded-xl transition shadow-md shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+          <i class="fa-solid fa-bolt"></i>
+          <span>Xử Lý Thay Đổi Cấu Trúc</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Preview Area (Right) -->
+    <div class="lg:w-2/3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+      
+      <!-- Tab Controls Header -->
+      <div class="border-b border-slate-200 bg-slate-50/50 px-4 pt-3 flex items-center justify-between">
+        <div class="flex gap-2">
+          <button id="tabOriginal" class="px-4 py-2 font-semibold text-xs rounded-t-lg bg-white border-t border-x border-slate-200 text-blue-600 flex items-center gap-2">
+            <i class="fa-solid fa-file-code"></i> File Gốc
+          </button>
+          <button id="tabModified" class="px-4 py-2 font-semibold text-xs rounded-t-lg bg-slate-100 border-t border-x border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Kết Quả Đã Sửa
+            <span id="badgeModified" class="hidden px-1.5 py-0.5 text-[10px] bg-green-500 text-white rounded-full">Sẵn sàng</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 pb-2">
+          <button id="btnCopyHtml" title="Sao chép mã HTML" class="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-200 transition text-xs flex items-center gap-1">
+            <i class="fa-regular fa-copy"></i>
+            <span>Copy HTML</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview Content Container -->
+      <div class="flex-1 p-6 overflow-y-auto min-h-[500px] relative bg-slate-100/40">
+
+        <!-- Loading Spinner Overlay -->
+        <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3">
+          <div class="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+          <p class="font-semibold text-sm text-slate-700">Gemini AI đang tái cấu trúc văn bản...</p>
+          <p class="text-xs text-slate-400">Đang giữ nguyên toàn bộ nội dung gốc</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
+          <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 text-3xl mb-3">
+            <i class="fa-solid fa-file-circle-plus"></i>
+          </div>
+          <p class="font-medium text-slate-600 text-sm">Chưa có văn bản nào được tải lên</p>
+          <p class="text-xs text-slate-400 max-w-sm mt-1">Vui lòng tải lên file Word (.docx) ở bảng bên trái để xem trước và điều chỉnh cấu trúc.</p>
+        </div>
+
+        <!-- Document Container Page View -->
+        <div id="docViewer" class="hidden max-w-3xl mx-auto bg-white border border-slate-200 shadow-md rounded-sm p-8 sm:p-12 min-h-[600px] preview-doc">
+          <!-- Rendered Document content goes here -->
+        </div>
+
+      </div>
+
+      <!-- Status Footer -->
+      <div class="border-t border-slate-200 px-4 py-2 bg-slate-50 text-xs text-slate-500 flex justify-between items-center">
+        <span id="statusInfo">Sẵn sàng xử lý.</span>
+        <span id="wordCountInfo">0 từ</span>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modal API Key Settings -->
+  <div id="apiKeyModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-500"></i> Cấu Hình Gemini API Key
+        </h3>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">
+        Nhập API key của bạn để kết nối trực tiếp với Gemini API. Key được lưu an toàn trong bộ nhớ trình duyệt (localStorage) của bạn.
+      </p>
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Gemini API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="btnSaveApiKey" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition">
+          Lưu API Key
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // State Management
+    const state = {
+      apiKey: localStorage.getItem('gemini_api_key') || '',
+      originalHtml: '',
+      modifiedHtml: '',
+      activeTab: 'original', // 'original' | 'modified'
+      fileName: ''
+    };
+
+    // DOM Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const btnRemoveFile = document.getElementById('btnRemoveFile');
+    const promptInput = document.getElementById('promptInput');
+    const btnProcess = document.getElementById('btnProcess');
+    const btnExportDocx = document.getElementById('btnExportDocx');
+    const docViewer = document.getElementById('docViewer');
+    const emptyState = document.getElementById('emptyState');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const tabOriginal = document.getElementById('tabOriginal');
+    const tabModified = document.getElementById('tabModified');
+    const badgeModified = document.getElementById('badgeModified');
+    const statusInfo = document.getElementById('statusInfo');
+    const wordCountInfo = document.getElementById('wordCountInfo');
+    const btnCopyHtml = document.getElementById('btnCopyHtml');
+    
+    // Modal Elements
+    const apiKeyModal = document.getElementById('apiKeyModal');
+    const btnOpenApiKeyModal = document.getElementById('btnOpenApiKeyModal');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+    const btnSaveApiKey = document.getElementById('btnSaveApiKey');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const apiKeyStatusText = document.getElementById('apiKeyStatusText');
+
+    // Init App
+    function init() {
+      updateApiKeyUI();
+      setupEventListeners();
+    }
+
+    // UI Helpers
+    function updateApiKeyUI() {
+      if (state.apiKey) {
+        apiKeyStatusText.textContent = 'API Key: Đã lưu';
+        apiKeyStatusText.classList.add('text-green-600');
+        apiKeyInput.value = state.apiKey;
+      } else {
+        apiKeyStatusText.textContent = 'Chưa nhập API Key';
+        apiKeyStatusText.classList.remove('text-green-600');
+      }
+    }
+
+    function setupEventListeners() {
+      // API Key Modal
+      btnOpenApiKeyModal.addEventListener('click', () => apiKeyModal.classList.remove('hidden'));
+      btnCloseModal.addEventListener('click', () => apiKeyModal.classList.add('hidden'));
+      btnSaveApiKey.addEventListener('click', () => {
+        const val = apiKeyInput.value.trim();
+        state.apiKey = val;
+        localStorage.setItem('gemini_api_key', val);
+        updateApiKeyUI();
+        apiKeyModal.classList.add('hidden');
+        showToast('Đã lưu Gemini API Key');
+      });
+
+      // File Drag & Drop
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-50/50');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+        if (e.dataTransfer.files.length > 0) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          handleFile(e.target.files[0]);
+        }
+      });
+
+      btnRemoveFile.addEventListener('click', resetFile);
+
+      // Sample prompts
+      document.querySelectorAll('.sample-prompt').forEach(btn => {
+        btn.addEventListener('click', () => {
+          promptInput.value = btn.textContent.trim();
+        });
+      });
+
+      // Tabs
+      tabOriginal.addEventListener('click', () => switchTab('original'));
+      tabModified.addEventListener('click', () => switchTab('modified'));
+
+      // Process Action
+      btnProcess.addEventListener('click', processWithGemini);
+
+      // Export Action
+      btnExportDocx.addEventListener('click', exportDocx);
+
+      // Copy HTML
+      btnCopyHtml.addEventListener('click', () => {
+        const content = state.activeTab === 'original' ? state.originalHtml : state.modifiedHtml;
+        if (!content) return;
+        
+        // Use copy command
+        const temp = document.createElement('textarea');
+        temp.value = content;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast('Đã sao chép mã HTML!');
+      });
+    }
+
+    // Handle .docx File Reading
+    function handleFile(file) {
+      if (!file.name.endsWith('.docx')) {
+        showToast('Vui lòng chọn file đúng định dạng .docx', 'error');
+        return;
+      }
+
+      state.fileName = file.name;
+      fileName.textContent = file.name;
+      fileInfo.classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const arrayBuffer = e.target.result;
+        mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+          .then(displayOriginalContent)
+          .catch(err => {
+            console.error(err);
+            showToast('Lỗi đọc cấu trúc file Word', 'error');
+          });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function displayOriginalContent(result) {
+      state.originalHtml = result.value;
+      state.modifiedHtml = '';
+      badgeModified.classList.add('hidden');
+      btnExportDocx.disabled = false;
+      btnProcess.disabled = false;
+
+      switchTab('original');
+      statusInfo.textContent = 'Đã tải thành công file Word gốc.';
+      updateWordCount(state.originalHtml);
+    }
+
+    function resetFile() {
+      fileInput.value = '';
+      state.fileName = '';
+      state.originalHtml = '';
+      state.modifiedHtml = '';
+      fileInfo.classList.add('hidden');
+      emptyState.classList.remove('hidden');
+      docViewer.classList.add('hidden');
+      btnProcess.disabled = true;
+      btnExportDocx.disabled = true;
+      badgeModified.classList.add('hidden');
+      statusInfo.textContent = 'Sẵn sàng xử lý.';
+      wordCountInfo.textContent = '0 từ';
+    }
+
+    function switchTab(tab) {
+      state.activeTab = tab;
+      if (tab === 'original') {
+        tabOriginal.className = "px-4 py-2 font-semibold text-xs rounded-t-lg bg-white border-t border-x border-slate-200 text-blue-600 flex items-center gap-2";
+        tabModified.className = "px-4 py-2 font-semibold text-xs rounded-t-lg bg-slate-100 border-t border-x border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2";
+        renderViewer(state.originalHtml);
+      } else {
+        if (!state.modifiedHtml) {
+          showToast('Chưa có kết quả chỉnh sửa nào', 'error');
+          return;
+        }
+        tabModified.className = "px-4 py-2 font-semibold text-xs rounded-t-lg bg-white border-t border-x border-slate-200 text-purple-600 flex items-center gap-2";
+        tabOriginal.className = "px-4 py-2 font-semibold text-xs rounded-t-lg bg-slate-100 border-t border-x border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2";
+        renderViewer(state.modifiedHtml);
+      }
+    }
+
+    function renderViewer(html) {
+      if (!html) {
+        emptyState.classList.remove('hidden');
+        docViewer.classList.add('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+      docViewer.classList.remove('hidden');
+      docViewer.innerHTML = html;
+      updateWordCount(html);
+    }
+
+    function updateWordCount(html) {
+      const text = html.replace(/<[^>]*>/g, ' ').trim();
+      const words = text ? text.split(/\s+/).length : 0;
+      wordCountInfo.textContent = `${words.toLocaleString()} từ`;
+    }
+
+    // Call Gemini API with Exponential Backoff
+    async function processWithGemini() {
+      const userPrompt = promptInput.value.trim();
+      if (!userPrompt) {
+        showToast('Vui lòng nhập yêu cầu thay đổi cấu trúc', 'error');
+        return;
+      }
+      if (!state.originalHtml) {
+        showToast('Vui lòng tải lên file Word trước', 'error');
+        return;
+      }
+
+      loadingOverlay.classList.remove('hidden');
+      statusInfo.textContent = 'Đang gửi dữ liệu đến Gemini API...';
+
+      const systemInstruction = `Bạn là một chuyên gia biên tập định dạng và cấu trúc tài liệu Word. 
+Nhiệm vụ của bạn là nhận mã HTML đại diện cho cấu trúc file Word gốc và chỉnh sửa cấu trúc HTML, CSS inline hoặc layout theo yêu cầu của người dùng.
+QUY TẮC BẮT BUỘC:
+1. GIỮ NGUYÊN 100% NỘI DUNG CHỮ (FACTS/TEXTUAL CONTENT). Không được xóa, thêm bớt hay làm thay đổi ý nghĩa của bất kỳ câu chữ nào.
+2. Chỉ điều chỉnh các thẻ HTML (h1, h2, h3, p, table, ul, ol, strong, em, style inline) để làm thay đổi cấu trúc, thứ tự hoặc trình bày thị giác theo đúng prompt.
+3. Chỉ trả về trực tiếp đoạn mã HTML hợp lệ hoàn chỉnh (trong khối thẻ <div>...</div>) đã chỉnh sửa. Không kèm lời giải thích hay markdown codeblock (ví dụ không dùng \`\`\`html).`;
+
+      const promptPayload = `Mã HTML cấu trúc tài liệu gốc:\n${state.originalHtml}\n\nYêu cầu thay đổi cấu trúc:\n${userPrompt}`;
+
+      // Gemini Endpoint
+      const apiKey = state.apiKey || "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptPayload }] }],
+        systemInstruction: { parts: [{ text: systemInstruction }] }
+      };
+
+      try {
+        const responseText = await fetchWithRetry(apiUrl, payload);
+        // Clean markdown backticks if returned
+        let cleanHtml = responseText.replace(/```html/gi, '').replace(/```/g, '').trim();
+        
+        state.modifiedHtml = cleanHtml;
+        badgeModified.classList.remove('hidden');
+        switchTab('modified');
+        statusInfo.textContent = 'Hoàn tất điều chỉnh cấu trúc với Gemini AI!';
+        showToast('Đã áp dụng thay đổi cấu trúc thành công!');
+      } catch (err) {
+        console.error(err);
+        showToast(`Lỗi Gemini API: ${err.message}`, 'error');
+        statusInfo.textContent = 'Đã xảy ra lỗi khi xử lý.';
+      } finally {
+        loadingOverlay.classList.add('hidden');
+      }
+    }
+
+    // Exponential Backoff Fetch
+    async function fetchWithRetry(url, payload, retries = 3, delay = 1000) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (content) return content;
+          throw new Error('Không nhận được nội dung trả về hợp lệ từ API');
+
+        } catch (error) {
+          if (i === retries - 1) throw error;
+          await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+        }
+      }
+    }
+
+    // Export HTML back to DOCX
+    function exportDocx() {
+      const contentToExport = state.activeTab === 'modified' && state.modifiedHtml ? state.modifiedHtml : state.originalHtml;
+      
+      if (!contentToExport) {
+        showToast('Không có nội dung để tải về', 'error');
+        return;
+      }
+
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; }
+            h1 { font-size: 18pt; font-weight: bold; color: #1e3a8a; }
+            h2 { font-size: 14pt; font-weight: bold; color: #1e40af; }
+            h3 { font-size: 12pt; font-weight: bold; }
+            table { border-collapse: collapse; width: 100%; }
+            td, th { border: 1px solid #94a3b8; padding: 6px; }
+            th { background-color: #f1f5f9; }
+          </style>
+        </head>
+        <body>
+          ${contentToExport}
+        </body>
+        </html>
+      `;
+
+      try {
+        const converted = htmlDocx.asBlob(fullHtml);
+        const downloadUrl = URL.createObjectURL(converted);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        const newFileName = state.fileName ? state.fileName.replace('.docx', '_edited.docx') : 'structured_document.docx';
+        a.download = newFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        showToast('Đã xuất file .docx thành công!');
+      } catch (err) {
+        console.error(err);
+        showToast('Lỗi khi xuất định dạng docx', 'error');
+      }
+    }
+
+    // Helper Toast Notification
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      const bgColor = type === 'error' ? 'bg-red-600' : 'bg-slate-800';
+      toast.className = `fixed bottom-5 right-5 ${bgColor} text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium z-50 flex items-center gap-2 animate-bounce`;
+      toast.innerHTML = `
+        <i class="fa-solid ${type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check'}"></i>
+        <span>${message}</span>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    // Start App
+    window.onload = init;
+  </script>
+</body>
+</html>
